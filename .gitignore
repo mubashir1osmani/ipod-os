@@ -1,10 +1,8 @@
 # aider files
 
-.aider.chat.history.md
-.aider.input.history.md
 .aider*
 # Zig build artifacts
-zig-cache/
+.zig-cache/
 zig-out/
 
 # Build outputs
