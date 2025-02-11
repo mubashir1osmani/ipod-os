@@ -1,40 +1,29 @@
 const std = @import("std");
+const CrossTarget = std.zig.CrossTarget;
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
 pub fn build(b: *std.Build) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
+    // Set up for x86 16-bit real mode
+    const target = CrossTarget{
+        .cpu_arch = .x86,
+        .os_tag = .freestanding,
+        .abi = .none,
+    };
 
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // set a preferred release mode, allowing the user to decide how to optimize.
-    const optimize = b.standardOptimizeOption(.{});
+    // Use ReleaseSmall to minimize code size
+    const optimize = std.builtin.OptimizeMode.ReleaseSmall;
 
-    const lib = b.addStaticLibrary(.{
-        .name = "ipodos",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    // This declares intent for the library to be installed into the standard
-    // location when the user invokes the "install" step (the default step when
-    // running `zig build`).
-    b.installArtifact(lib);
-
-    const exe = b.addExecutable(.{
-        .name = "ipodos",
+    const bootloader = b.addExecutable(.{
+        .name = "bootloader",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    bootloader.setLinkerScriptPath(.{ .path = "src/boot.ld" });
+    bootloader.code_model = .small;
+    bootloader.pie = false;
+    bootloader.red_zone = false;
+    bootloader.strip = true;
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

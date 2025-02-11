@@ -1,24 +1,52 @@
-const std = @import("std");
+const BOOTLOADER_ORG = 0x7C00;
+const BOOTLOADER_STACK = 0x7C00;
 
-pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+export fn _start() callconv(.Naked) noreturn {
+    // Set up segments
+    asm volatile (
+        \\  xor ax, ax
+        \\  mov ds, ax
+        \\  mov es, ax
+        \\  mov ss, ax
+        \\  mov sp, %[stack]
+        :
+        : [stack] "n" (BOOTLOADER_STACK)
+    );
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    try bw.flush(); // don't forget to flush!
+    // Print welcome message
+    print("iPodOS Bootloader v0.1\r\n");
+    
+    // Halt the system
+    while (true) {
+        asm volatile ("hlt");
+    }
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+fn print(msg: []const u8) void {
+    for (msg) |c| {
+        printChar(c);
+    }
+}
+
+fn printChar(c: u8) void {
+    asm volatile (
+        \\  mov ah, 0x0E
+        \\  mov al, %[char]
+        \\  int 0x10
+        :
+        : [char] "r" (c)
+        : "ax"
+    );
+}
+
+// Magic boot sector signature
+export var magic: u16 align(1) linksection(".magic") = 0xAA55;
+
+comptime {
+    // Ensure our code fits in the boot sector (512 bytes)
+    @export(_start, .{ .name = "_start", .section = ".text" });
+    asm (
+        \\.section .text
+        \\.org 0x7C00
+    );
 }
