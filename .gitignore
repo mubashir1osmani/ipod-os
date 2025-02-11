@@ -3,3 +3,22 @@
 .aider.chat.history.md
 .aider.input.history.md
 .aider*
+# Zig build artifacts
+zig-cache/
+zig-out/
+
+# Build outputs
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+
+# OS specific
+.DS_Store
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
