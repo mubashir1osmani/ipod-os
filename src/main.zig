@@ -1,52 +1,30 @@
-const BOOTLOADER_ORG = 0x7C00;
-const BOOTLOADER_STACK = 0x7C00;
+const UART_BASE = 0x09000000;
 
-export fn _start() callconv(.Naked) noreturn {
-    // Set up segments
-    asm volatile (
-        \\  xor ax, ax
-        \\  mov ds, ax
-        \\  mov es, ax
-        \\  mov ss, ax
-        \\  mov sp, %[stack]
-        :
-        : [stack] "n" (BOOTLOADER_STACK)
-    );
+fn mmio_write(comptime T: type, address: usize, value: T) void {
+    const ptr = @as(*volatile T, @ptrFromInt(address));
+    ptr.* = value;
+}
 
-    // Print welcome message
-    print("iPodOS Bootloader v0.1\r\n");
-    
-    // Halt the system
-    while (true) {
-        asm volatile ("hlt");
-    }
+fn uart_putchar(c: u8) void {
+    mmio_write(u8, UART_BASE, c);
 }
 
 fn print(msg: []const u8) void {
     for (msg) |c| {
-        printChar(c);
+        uart_putchar(c);
     }
 }
 
-fn printChar(c: u8) void {
-    asm volatile (
-        \\  mov ah, 0x0E
-        \\  mov al, %[char]
-        \\  int 0x10
-        :
-        : [char] "r" (c)
-        : "ax"
-    );
+export fn _start() callconv(.C) noreturn {
+    // Print welcome message
+    print("iPodOS ARM64 Bootloader v0.1\n");
+    
+    // Halt the CPU
+    while (true) {
+        asm volatile ("wfe");
+    }
 }
 
-// Magic boot sector signature
-export var magic: u16 align(1) linksection(".magic") = 0xAA55;
-
 comptime {
-    // Ensure our code fits in the boot sector (512 bytes)
-    @export(_start, .{ .name = "_start", .section = ".text" });
-    asm (
-        \\.section .text
-        \\.org 0x7C00
-    );
+    @export(_start, .{ .name = "_start", .section = ".text.boot" });
 }

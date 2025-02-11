@@ -2,9 +2,9 @@ const std = @import("std");
 const CrossTarget = std.zig.CrossTarget;
 
 pub fn build(b: *std.Build) void {
-    // Set up for x86 16-bit real mode
+    // Set up for ARM64
     const target = CrossTarget{
-        .cpu_arch = .x86,
+        .cpu_arch = .aarch64,
         .os_tag = .freestanding,
         .abi = .none,
     };
@@ -25,15 +25,17 @@ pub fn build(b: *std.Build) void {
     bootloader.red_zone = false;
     bootloader.strip = true;
 
-    // This declares intent for the executable to be installed into the
-    // standard location when the user invokes the "install" step (the default
-    // step when running `zig build`).
-    b.installArtifact(exe);
+    // Install the bootloader
+    b.installArtifact(bootloader);
 
-    // This *creates* a Run step in the build graph, to be executed when another
-    // step is evaluated that depends on it. The next line below will establish
-    // such a dependency.
-    const run_cmd = b.addRunArtifact(exe);
+    // Create run command for QEMU
+    const run_cmd = b.addSystemCommand(&[_][]const u8{
+        "qemu-system-aarch64",
+        "-M", "virt",
+        "-cpu", "cortex-a53",
+        "-kernel", "zig-out/bin/bootloader",
+        "-nographic",
+    });
 
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.

@@ -1,15 +1,25 @@
+ENTRY(_start)
+
 SECTIONS {
-    . = 0x7C00;
+    . = 0x40000000;
+    
+    .text.boot : {
+        *(.text.boot)
+    }
+    
     .text : {
         *(.text)
     }
+    
     .rodata : {
         *(.rodata)
     }
+    
     .data : {
         *(.data)
     }
-    .magic : {
-        *(.magic)
+    
+    .bss : {
+        *(.bss)
     }
 }
